@@ -49,21 +49,33 @@ if [ "$OS" = 'Linux' ]; then
 fi
 
 print 'Installing Homebrew...'
-if [ "$OS" = 'Linux' ] && [ -e /home/linuxbrew/.linuxbrew/bin/brew ]; then
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+if [ "$OS" = 'Linux' ]; then
+  if [ -e /home/linuxbrew/.linuxbrew/bin/brew ]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  elif [ -e $HOME/.linuxbrew/bin/brew ]; then
+    eval "$($HOME/.linuxbrew/bin/brew shellenv)"
+  fi
 fi
 if type brew > /dev/null 2>&1; then
   echo 'Homebrew is already installed'
 else
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   if [ "$OS" = 'Linux' ]; then
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    if [ -e /home/linuxbrew/.linuxbrew/bin/brew ]; then
+      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    elif [ -e $HOME/.linuxbrew/bin/brew ]; then
+      eval "$($HOME/.linuxbrew/bin/brew shellenv)"
+    fi
   fi
 
   if type brew > /dev/null 2>&1; then
     echo 'Homebrew is installed'
     if [ "$OS" = 'Linux' ]; then
-      echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> ~/.zshrc.local
+      if [ -e /home/linuxbrew/.linuxbrew/bin/brew ]; then
+        echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> ~/.zshrc.local
+      elif [ -e $HOME/.linuxbrew/bin/brew ]; then
+        echo "eval \"\$($HOME/.linuxbrew/bin/brew shellenv)\"" >> ~/.zshrc.local
+      fi
     fi
   else
     echo "${RED}Error:${RESET} Failed to install Homebrew." 1>&2
@@ -149,18 +161,25 @@ if [ ! -e ~/.vim/colors/molokai.vim ]; then
 fi
 
 # 7. docker (optional)
-if [ "$OS" = 'Linux' ]; then
+if [ "$OS" = 'Linux' ] && ! type docker > /dev/null 2>&1; then
   read -r -p 'Do you want to install Docker? (y/N): ' yn
   case "$yn" in
     [yY]*)
+      # docker
       sudo apt install -y apt-transport-https ca-certificates software-properties-common
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
       sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
       sudo apt update
       apt-cache policy docker-ce
       sudo apt install -y docker-ce
-      sudo systemctl status docker
-      sudo usermod -aG docker "$USER"
+      sudo usermod -aG docker "${USER:-$(whoami)}"
+
+      # docker compose
+      COMPOSE_VERSION="v2.2.2"
+      mkdir -p $HOME/.docker/cli-plugins
+      curl -fsSL -o $HOME/.docker/cli-plugins/docker-compose \
+        "https://github.com/docker/compose/releases/download/$COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)"
+      chmod +x $HOME/.docker/cli-plugins/docker-compose
       ;;
     *)
       ;;
